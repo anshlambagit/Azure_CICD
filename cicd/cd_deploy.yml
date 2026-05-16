@@ -1,0 +1,67 @@
+parameters:
+- name: AzureResourceManagerConnection
+  type: string
+- name: DataFactory
+  type: string
+- name: ResourceGroup
+  type: string
+- name: SubscriptionId
+  type: string
+- name: Environment
+  type: string
+
+steps:
+
+# Download Artifacts
+- task: DownloadPipelineArtifact@2
+  displayName: "Download The ADF Artifact"
+  inputs:
+    buildType: "current"
+    artifactName: "ARMTemplate"
+    targetpath: "$(Pipeline.Workspace)/ARMTemplate"
+
+- task: AzurePowerShell@5
+  displayName: "Stop Current ADF Triggers"
+  inputs: 
+    azureSubscription: ${{ parameters.AzureResourceManagerConnection }}
+    pwsh: true
+    azurePowerShellVersion: "LatestVersion"
+    ScriptType: "FilePath"
+    ScriptPath: "$(Pipeline.Workspace)/ARMTemplate/PrePostDeploymentScript.ps1"
+    scriptArguments:
+      -ArmTemplate "$(Pipeline.Workspace)/ARMTemplate/ARMTemplateForFactory.json"
+      -ArmTemplateParameters $(Build.Repository.LocalPath)/cicd/ARMParams/${{ parameters.Environment }}.json
+      -ResourceGroupName ${{ parameters.ResourceGroup }}
+      -DataFactoryName ${{ parameters.DataFactory }}
+      -predeployment $true
+      -deleteDeployment $false
+
+- task: AzureResourceManagerTemplateDeployment@3
+  displayName: "Deploy ADF ARM Template"
+  inputs:
+    deploymentScope: 'Resource Group'
+    azureResourceManagerConnection: ${{ parameters.AzureResourceManagerConnection }}
+    subscriptionId: ${{ parameters.SubscriptionId }}
+    action: 'Create Or Update Resource Group'
+    resourceGroupName: ${{ parameters.ResourceGroup }}
+    location: 'canadacentral'
+    templateLocation: 'Linked artifact'
+    csmFile: '$(Pipeline.Workspace)/ARMTemplate/ARMTemplateForFactory.json'
+    csmParametersFile: '$(Build.Repository.LocalPath)/cicd/ARMParams/${{ parameters.Environment }}.json'
+    deploymentMode: 'Incremental'
+
+- task: AzurePowerShell@5
+  displayName: "Start ADF Triggers"
+  inputs:
+    azureSubscription: ${{ parameters.AzureResourceManagerConnection }}
+    pwsh: true
+    azurePowerShellVersion: "LatestVersion"
+    ScriptType: "FilePath"
+    ScriptPath: "$(Pipeline.Workspace)/ARMTemplate/PrePostDeploymentScript.ps1"
+    scriptArguments:
+      -ArmTemplate "$(Pipeline.Workspace)/ARMTemplate/ARMTemplateForFactory.json"
+      -ArmTemplateParameters $(Build.Repository.LocalPath)/cicd/ARMParams/${{ parameters.Environment }}.json
+      -ResourceGroupName ${{ parameters.ResourceGroup }}
+      -DataFactoryName ${{ parameters.DataFactory }}
+      -predeployment $false
+      -deleteDeployment $true

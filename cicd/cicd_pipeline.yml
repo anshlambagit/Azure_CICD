@@ -1,0 +1,96 @@
+trigger:
+- main
+
+pool:
+  vmImage: "ubuntu-latest"
+
+stages:
+
+# Build ARM Template
+- stage: BuildARMTemplate
+  displayName: "Build ARM Template"
+
+  variables:
+  - group: devgroup
+
+  jobs:
+  - job: BuildARM
+    displayName: "Build ARM"
+    steps:
+    - template: ci_build.yml
+      parameters:
+        DataFactory: $(DataFactory)
+        ResourceGroup: $(ResourceGroup)
+        SubscriptionId: $(SubscriptionId)
+
+
+# DEPLOY TO DEV
+- stage: DeployToDEV
+  dependsOn: BuildARMTemplate
+  condition: succeeded()
+  displayName: "Deploy To DEV"
+
+  variables:
+  - group: devgroup
+
+  jobs:
+  - job: DeployToDEV
+    displayName: "Deploy To DEV"
+    steps:
+    - template: cd_deploy.yml
+      parameters:
+        AzureResourceManagerConnection: adf-azure-service-connection
+        DataFactory: $(DataFactory)
+        SubscriptionId: $(SubscriptionId)
+        ResourceGroup: $(ResourceGroup)
+        Environment: dev
+
+
+# DEPLOY TO QA
+- stage: DeployToQA
+  dependsOn: BuildARMTemplate
+  condition: succeeded()
+  displayName: "Deploy To QA"
+
+  variables:
+  - group: qagroup
+
+  jobs:
+  - job: DeployToQA
+    displayName: "Deploy To QA"
+    steps:
+    - template: cd_deploy.yml
+      parameters:
+        AzureResourceManagerConnection: adf-azure-service-connection
+        DataFactory: $(DataFactory)
+        SubscriptionId: $(SubscriptionId)
+        ResourceGroup: $(ResourceGroup)
+        Environment: qa
+
+
+# DEPLOY TO PD (Production) With Approval Gate
+- stage: DeployToPROD
+  dependsOn: DeployToQA
+  condition: succeeded()
+  displayName: "Deploy To Production"
+
+  variables:
+  - group: prodgroup
+
+  jobs:
+  - deployment: DeployToPD
+    displayName: "Deploy To Production"
+    environment: 'pd' # This links to the Environment in Pipelines > Environments
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+          - template: cd_deploy.yml
+            parameters:
+              AzureResourceManagerConnection: adf-azure-service-connection
+              DataFactory: $(DataFactory)
+              SubscriptionId: $(SubscriptionId)
+              ResourceGroup: $(ResourceGroup)
+              Environment: pd
+
