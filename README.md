@@ -8,19 +8,6 @@
 
 - https://youtu.be/6BmFM9e1Lk0?si=kwPGBMr-3LvR70_W
 
-## 📋 Table of Contents
-
-- [Overview](#overview)
-- [Prerequisites](#prerequisites)
-- [Project Structure](#project-structure)
-- [Setup and Installation](#setup-and-installation)
-- [Build Process](#build-process)
-- [Deployment Strategies](#deployment-strategies)
-- [CI/CD Pipeline Configuration](#cicd-pipeline-configuration)
-- [Best Practices](#best-practices)
-- [Troubleshooting](#troubleshooting)
-- [References](#references)
-
 ---
 
 ## Overview
